@@ -14,7 +14,15 @@ import sys
 
 # Add parent directory to path to import ML model
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from ml.sentiment_model import SentimentAnalyzer
+
+# Import with error handling for cloud deployment
+try:
+    from ml.sentiment_model import SentimentAnalyzer
+    NLTK_AVAILABLE = True
+except ImportError as e:
+    st.warning(f"⚠️ NLTK features may be limited: {e}")
+    NLTK_AVAILABLE = False
+    SentimentAnalyzer = None
 
 def show_mental_health():
     """Display mental health monitoring page"""
@@ -55,8 +63,13 @@ def show_mental_health():
     st.markdown("# 🧠 Mental Health Check")
     st.markdown("## How are you feeling today?")
     
-    # Initialize sentiment analyzer
-    analyzer = SentimentAnalyzer()
+    # Check if NLTK is available
+    if not NLTK_AVAILABLE:
+        st.warning("⚠️ Sentiment analysis is currently unavailable. NLTK data could not be loaded.")
+        st.info("You can still track your feelings, but sentiment analysis will be disabled.")
+    
+    # Initialize sentiment analyzer only if available
+    analyzer = SentimentAnalyzer() if NLTK_AVAILABLE else None
     
     # Check-in form
     with st.form("mental_health_form"):
@@ -73,30 +86,52 @@ def show_mental_health():
                 st.error("❌ Please share how you're feeling")
                 return
             
-            # Analyze sentiment
-            result = analyzer.predict_sentiment(feeling)
-            sentiment = result['sentiment']
-            confidence = result['confidence']
-            emoji = analyzer.get_sentiment_emoji(sentiment)
-            
-            # Display result
-            sentiment_class = f"sentiment-{sentiment}"
-            
-            st.markdown(f"""
-            <div class="{sentiment_class}">
-                <h2>{emoji} Your Mood: {sentiment.title()}</h2>
-                <p><strong>Confidence:</strong> {confidence:.1%}</p>
-                <p><strong>Your message:</strong> "{feeling}"</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Save to database
-            save_mental_health_record(
-                st.session_state.user_id,
-                feeling,
-                sentiment,
-                confidence
-            )
+            # Analyze sentiment only if NLTK is available
+            if analyzer:
+                try:
+                    result = analyzer.predict_sentiment(feeling)
+                    sentiment = result['sentiment']
+                    confidence = result['confidence']
+                    emoji = analyzer.get_sentiment_emoji(sentiment)
+                    
+                    # Display result
+                    sentiment_class = f"sentiment-{sentiment}"
+                    
+                    st.markdown(f"""
+                    <div class="{sentiment_class}">
+                        <h2>{emoji} Your Mood: {sentiment.title()}</h2>
+                        <p><strong>Confidence:</strong> {confidence:.1%}</p>
+                        <p><strong>Your message:</strong> "{feeling}"</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Save to database
+                    save_mental_health_record(
+                        st.session_state.user_id,
+                        feeling,
+                        sentiment,
+                        confidence
+                    )
+                    
+                except Exception as e:
+                    st.error(f"❌ Error analyzing sentiment: {e}")
+                    st.info("Your feeling has been saved, but sentiment analysis was not available.")
+                    # Still save the feeling without sentiment analysis
+                    save_mental_health_record(
+                        st.session_state.user_id,
+                        feeling,
+                        "neutral",  # Default sentiment
+                        0.5  # Default confidence
+                    )
+            else:
+                # NLTK not available, just save the feeling
+                st.info("Your feeling has been saved. Sentiment analysis is currently unavailable.")
+                save_mental_health_record(
+                    st.session_state.user_id,
+                    feeling,
+                    "neutral",  # Default sentiment
+                    0.5  # Default confidence
+                )
             
             # Provide personalized feedback
             if sentiment == "positive":

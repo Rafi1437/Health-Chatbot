@@ -14,17 +14,43 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import os
+import sys
+sys.path.append(os.path.dirname(__file__))
 
-# Download NLTK data
+# Download NLTK data with cloud-compatible path handling
 try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
+    import nltk
+    # Create NLTK data directory for cloud deployment
+    nltk_data_path = os.path.expanduser('~/nltk_data')
+    if not os.path.exists(nltk_data_path):
+        os.makedirs(nltk_data_path, exist_ok=True)
+    
+    # Set NLTK data path for cloud environment
+    nltk.data.path.append(nltk_data_path)
+    
+    # Download required NLTK data with better error handling
+    required_data = [
+        ('tokenizers/punkt', 'punkt'),
+        ('corpora/stopwords', 'stopwords')
+    ]
+    
+    for resource, package in required_data:
+        try:
+            nltk.data.find(resource)
+            print(f"✅ {package} already available")
+        except LookupError:
+            print(f"📦 Downloading {package}...")
+            try:
+                nltk.download(package, download_dir=nltk_data_path, quiet=True)
+                print(f"✅ {package} downloaded successfully")
+            except Exception as download_error:
+                print(f"⚠️  Error downloading {package}: {download_error}")
+                # Continue with other downloads rather than failing
+                continue
+                
+except Exception as e:
+    print(f"NLTK setup issue: {e}")
+    print("Will attempt to continue with available data...")
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize

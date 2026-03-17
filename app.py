@@ -27,25 +27,40 @@ def download_nltk_data():
     """Download required NLTK data for cloud deployment"""
     try:
         import nltk
-        # Check if NLTK data exists
-        try:
-            nltk.data.find('tokenizers/punkt')
-        except LookupError:
-            nltk.download('punkt', quiet=True)
+        import os
         
-        try:
-            nltk.data.find('corpora/stopwords')
-        except LookupError:
-            nltk.download('stopwords', quiet=True)
+        # Create NLTK data directory for cloud deployment
+        nltk_data_path = os.path.expanduser('~/nltk_data')
+        if not os.path.exists(nltk_data_path):
+            os.makedirs(nltk_data_path, exist_ok=True)
         
-        try:
-            nltk.data.find('taggers/averaged_perceptron_tagger')
-        except LookupError:
-            nltk.download('averaged_perceptron_tagger', quiet=True)
+        # Set NLTK data path for cloud environment
+        nltk.data.path.append(nltk_data_path)
+        
+        # Download required NLTK data with better error handling
+        required_data = [
+            ('tokenizers/punkt', 'punkt'),
+            ('corpora/stopwords', 'stopwords'),
+            ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger')
+        ]
+        
+        for resource, package in required_data:
+            try:
+                nltk.data.find(resource)
+                print(f"✅ {package} already available")
+            except LookupError:
+                print(f"📦 Downloading {package}...")
+                try:
+                    nltk.download(package, download_dir=nltk_data_path, quiet=True)
+                    print(f"✅ {package} downloaded successfully")
+                except Exception as download_error:
+                    print(f"⚠️  Error downloading {package}: {download_error}")
+                    # Continue with other downloads rather than failing
+                    continue
             
     except Exception as e:
-        st.warning(f"NLTK data download issue: {e}")
-        st.info("Please ensure internet connection for first-time setup")
+        st.warning(f"NLTK setup issue: {e}")
+        st.info("Some NLTK features may be limited. The app will still function.")
 
 def main():
     """Main application function"""
