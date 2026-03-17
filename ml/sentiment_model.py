@@ -20,36 +20,66 @@ sys.path.append(os.path.dirname(__file__))
 # Download NLTK data with cloud-compatible path handling
 try:
     import nltk
-    # Create NLTK data directory for cloud deployment
-    nltk_data_path = os.path.expanduser('~/nltk_data')
-    if not os.path.exists(nltk_data_path):
-        os.makedirs(nltk_data_path, exist_ok=True)
+    import os
+    import sys
+    sys.path.append(os.path.dirname(__file__))
     
-    # Set NLTK data path for cloud environment
-    nltk.data.path.append(nltk_data_path)
-    
-    # Download required NLTK data with better error handling
-    required_data = [
-        ('tokenizers/punkt', 'punkt'),
-        ('corpora/stopwords', 'stopwords')
+    # Create multiple possible NLTK data paths for cloud deployment
+    possible_paths = [
+        '/home/adminuser/nltk_data',  # Streamlit Cloud
+        os.path.expanduser('~/nltk_data'),  # Home directory
+        '/tmp/nltk_data',  # Temporary directory
+        './nltk_data',  # Local directory
+        os.path.join(os.getcwd(), 'nltk_data')  # Current working directory
     ]
     
-    for resource, package in required_data:
+    # Add all possible paths to NLTK data path
+    for path in possible_paths:
+        if path not in nltk.data.path:
+            nltk.data.path.append(path)
+    
+    # Find the best available path
+    best_path = None
+    for path in possible_paths:
         try:
-            nltk.data.find(resource)
-            print(f"✅ {package} already available")
-        except LookupError:
-            print(f"📦 Downloading {package}...")
+            os.makedirs(path, exist_ok=True)
+            # Test if we can write to this path
+            test_file = os.path.join(path, 'test_write.txt')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            best_path = path
+            break
+        except Exception:
+            continue
+    
+    if best_path:
+        print(f"📁 SentimentModel using NLTK data path: {best_path}")
+        
+        # Download required NLTK data to the best path
+        required_packages = [
+            ('tokenizers/punkt', 'punkt'),
+            ('corpora/stopwords', 'stopwords')
+        ]
+        
+        for resource, package in required_packages:
             try:
-                nltk.download(package, download_dir=nltk_data_path, quiet=True)
-                print(f"✅ {package} downloaded successfully")
-            except Exception as download_error:
-                print(f"⚠️  Error downloading {package}: {download_error}")
-                # Continue with other downloads rather than failing
-                continue
+                nltk.data.find(resource)
+                print(f"✅ {package} already available in sentiment_model")
+            except LookupError:
+                print(f"📦 SentimentModel downloading {package}...")
+                try:
+                    nltk.download(package, download_dir=best_path, quiet=True)
+                    print(f"✅ {package} downloaded successfully in sentiment_model")
+                except Exception as download_error:
+                    print(f"⚠️  SentimentModel error downloading {package}: {download_error}")
+                    # Continue with other downloads rather than failing
+                    continue
+    else:
+        print("❌ SentimentModel could not find a writable directory for NLTK data")
                 
 except Exception as e:
-    print(f"NLTK setup issue: {e}")
+    print(f"SentimentModel NLTK setup issue: {e}")
     print("Will attempt to continue with available data...")
 
 from nltk.corpus import stopwords

@@ -19,10 +19,21 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 try:
     from ml.sentiment_model import SentimentAnalyzer
     NLTK_AVAILABLE = True
+    SENTIMENT_METHOD = "NLTK"
 except ImportError as e:
     st.warning(f"⚠️ NLTK features may be limited: {e}")
     NLTK_AVAILABLE = False
     SentimentAnalyzer = None
+    SENTIMENT_METHOD = "Fallback"
+
+# Import fallback sentiment analyzer
+try:
+    from ml.fallback_sentiment import FallbackSentimentAnalyzer
+    FALLBACK_AVAILABLE = True
+except ImportError as e:
+    st.warning(f"⚠️ Fallback sentiment analyzer unavailable: {e}")
+    FALLBACK_AVAILABLE = False
+    FallbackSentimentAnalyzer = None
 
 def show_mental_health():
     """Display mental health monitoring page"""
@@ -65,11 +76,22 @@ def show_mental_health():
     
     # Check if NLTK is available
     if not NLTK_AVAILABLE:
-        st.warning("⚠️ Sentiment analysis is currently unavailable. NLTK data could not be loaded.")
-        st.info("You can still track your feelings, but sentiment analysis will be disabled.")
+        if FALLBACK_AVAILABLE:
+            st.info("📊 Using fallback sentiment analysis (word-based) for cloud deployment")
+        else:
+            st.warning("⚠️ Sentiment analysis is currently unavailable. NLTK data could not be loaded.")
+            st.info("You can still track your feelings, but sentiment analysis will be disabled.")
     
-    # Initialize sentiment analyzer only if available
-    analyzer = SentimentAnalyzer() if NLTK_AVAILABLE else None
+    # Initialize sentiment analyzer with fallback
+    if NLTK_AVAILABLE:
+        analyzer = SentimentAnalyzer()
+        st.success("✅ Using advanced NLTK sentiment analysis")
+    elif FALLBACK_AVAILABLE:
+        analyzer = FallbackSentimentAnalyzer()
+        st.info("📊 Using fallback sentiment analysis")
+    else:
+        analyzer = None
+        st.error("❌ Sentiment analysis unavailable")
     
     # Check-in form
     with st.form("mental_health_form"):
@@ -86,21 +108,30 @@ def show_mental_health():
                 st.error("❌ Please share how you're feeling")
                 return
             
-            # Analyze sentiment only if NLTK is available
+            # Analyze sentiment only if analyzer is available
             if analyzer:
                 try:
                     result = analyzer.predict_sentiment(feeling)
                     sentiment = result['sentiment']
                     confidence = result['confidence']
-                    emoji = analyzer.get_sentiment_emoji(sentiment)
                     
-                    # Display result
+                    # Get emoji for sentiment
+                    if hasattr(analyzer, 'get_sentiment_emoji'):
+                        emoji = analyzer.get_sentiment_emoji(sentiment)
+                    else:
+                        # Fallback emoji mapping
+                        emoji_map = {'positive': '😊', 'negative': '😔', 'neutral': '😐'}
+                        emoji = emoji_map.get(sentiment, '😐')
+                    
+                    # Display result with method info
                     sentiment_class = f"sentiment-{sentiment}"
+                    method_info = result.get('method', 'unknown')
                     
                     st.markdown(f"""
                     <div class="{sentiment_class}">
                         <h2>{emoji} Your Mood: {sentiment.title()}</h2>
                         <p><strong>Confidence:</strong> {confidence:.1%}</p>
+                        <p><strong>Analysis Method:</strong> {method_info}</p>
                         <p><strong>Your message:</strong> "{feeling}"</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -116,7 +147,7 @@ def show_mental_health():
                 except Exception as e:
                     st.error(f"❌ Error analyzing sentiment: {e}")
                     st.info("Your feeling has been saved, but sentiment analysis was not available.")
-                    # Still save the feeling without sentiment analysis
+                    # Still save feeling without sentiment analysis
                     save_mental_health_record(
                         st.session_state.user_id,
                         feeling,
@@ -124,7 +155,7 @@ def show_mental_health():
                         0.5  # Default confidence
                     )
             else:
-                # NLTK not available, just save the feeling
+                # No analyzer available, just save feeling
                 st.info("Your feeling has been saved. Sentiment analysis is currently unavailable.")
                 save_mental_health_record(
                     st.session_state.user_id,
@@ -133,16 +164,19 @@ def show_mental_health():
                     0.5  # Default confidence
                 )
             
-            # Provide personalized feedback
-            if sentiment == "positive":
-                st.success("🎉 That's wonderful to hear! Keep up the positive spirit!")
-                st.info("💡 Consider sharing your joy with family or friends, or engaging in activities that make you happy.")
-            elif sentiment == "neutral":
-                st.info("🤔 It's okay to have neutral days. Consider trying something new or engaging in light activities.")
-                st.info("💡 A short walk, calling a friend, or listening to music might help brighten your day.")
+            # Provide personalized feedback only if sentiment was analyzed
+            if 'sentiment' in locals() and sentiment:
+                if sentiment == "positive":
+                    st.success("🎉 That's wonderful to hear! Keep up the positive spirit!")
+                    st.info("💡 Consider sharing your joy with family or friends, or engaging in activities that make you happy.")
+                elif sentiment == "neutral":
+                    st.info("🤔 It's okay to have neutral days. Consider trying something new or engaging in light activities.")
+                    st.info("💡 A short walk, calling a friend, or listening to music might help brighten your day.")
+                else:
+                    st.warning("🫂 I'm sorry you're feeling this way. Remember, it's okay to not be okay.")
+                    st.info("💡 Consider reaching out to a family member, friend, or healthcare provider. You're not alone.")
             else:
-                st.warning("🫂 I'm sorry you're feeling this way. Remember, it's okay to not be okay.")
-                st.info("💡 Consider reaching out to a family member, friend, or healthcare provider. You're not alone.")
+                st.info("📝 Your feeling has been recorded. Thank you for sharing!")
             
             st.balloons()
     

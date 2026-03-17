@@ -24,43 +24,72 @@ from admin.admin_login import show_admin_login
 from admin.admin_dashboard import show_admin_dashboard
 
 def download_nltk_data():
-    """Download required NLTK data for cloud deployment"""
+    """Download required NLTK data for cloud deployment with robust error handling"""
     try:
         import nltk
         import os
         
-        # Create NLTK data directory for cloud deployment
-        nltk_data_path = os.path.expanduser('~/nltk_data')
-        if not os.path.exists(nltk_data_path):
-            os.makedirs(nltk_data_path, exist_ok=True)
-        
-        # Set NLTK data path for cloud environment
-        nltk.data.path.append(nltk_data_path)
-        
-        # Download required NLTK data with better error handling
-        required_data = [
-            ('tokenizers/punkt', 'punkt'),
-            ('corpora/stopwords', 'stopwords'),
-            ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger')
+        # Create multiple possible NLTK data paths for cloud deployment
+        possible_paths = [
+            '/home/adminuser/nltk_data',  # Streamlit Cloud
+            os.path.expanduser('~/nltk_data'),  # Home directory
+            '/tmp/nltk_data',  # Temporary directory
+            './nltk_data',  # Local directory
+            os.path.join(os.getcwd(), 'nltk_data')  # Current working directory
         ]
         
-        for resource, package in required_data:
+        # Add all possible paths to NLTK data path
+        for path in possible_paths:
+            if path not in nltk.data.path:
+                nltk.data.path.append(path)
+        
+        # Find the best available path
+        best_path = None
+        for path in possible_paths:
             try:
-                nltk.data.find(resource)
-                print(f"✅ {package} already available")
-            except LookupError:
-                print(f"📦 Downloading {package}...")
+                os.makedirs(path, exist_ok=True)
+                # Test if we can write to this path
+                test_file = os.path.join(path, 'test_write.txt')
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                best_path = path
+                break
+            except Exception:
+                continue
+        
+        if best_path:
+            print(f"📁 Using NLTK data path: {best_path}")
+            
+            # Download required NLTK data to the best path
+            required_packages = [
+                ('tokenizers/punkt', 'punkt'),
+                ('corpora/stopwords', 'stopwords'),
+                ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger')
+            ]
+            
+            for resource, package in required_packages:
                 try:
-                    nltk.download(package, download_dir=nltk_data_path, quiet=True)
-                    print(f"✅ {package} downloaded successfully")
-                except Exception as download_error:
-                    print(f"⚠️  Error downloading {package}: {download_error}")
-                    # Continue with other downloads rather than failing
-                    continue
+                    nltk.data.find(resource)
+                    print(f"✅ {package} already available")
+                except LookupError:
+                    print(f"📦 Downloading {package}...")
+                    try:
+                        nltk.download(package, download_dir=best_path, quiet=True)
+                        print(f"✅ {package} downloaded successfully")
+                    except Exception as download_error:
+                        print(f"⚠️  Error downloading {package}: {download_error}")
+                        # Continue with other downloads rather than failing
+                        continue
+            
+            return best_path
+        else:
+            print("❌ Could not find a writable directory for NLTK data")
+            return None
             
     except Exception as e:
-        st.warning(f"NLTK setup issue: {e}")
-        st.info("Some NLTK features may be limited. The app will still function.")
+        print(f"NLTK setup issue: {e}")
+        return None
 
 def main():
     """Main application function"""
