@@ -58,48 +58,71 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS for senior-friendly UI
+    # Custom CSS for senior-friendly and mobile-responsive UI
     st.markdown("""
     <style>
+        /* Base styles */
         .main {
             font-size: 18px;
         }
+        
+        /* Button styles */
         .stButton > button {
             font-size: 18px;
             padding: 12px 24px;
             border-radius: 12px;
             font-weight: bold;
+            touch-action: manipulation;
+            min-height: 44px;
         }
-        .stSelectbox > div > div > select {
-            font-size: 16px;
-        }
-        .stTextInput > div > input {
-            font-size: 16px;
-        }
+        
+        /* Input styles */
+        .stSelectbox > div > select,
+        .stTextInput > div > input,
         .stTextArea > div > textarea {
             font-size: 16px;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
         }
-        .metric-card {
-            background-color: #f0f8ff;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        
+        /* Mobile responsive design */
+        @media (max-width: 768px) {
+            .stSelectbox > div > select {
+                font-size: 16px !important;
+            }
+            .stButton > button {
+                font-size: 16px !important;
+                padding: 12px 24px !important;
+                min-height: 44px !important;
+            }
+            .stTextInput > div > input {
+                font-size: 16px !important;
+            }
+            .stTextArea > div > textarea {
+                font-size: 16px !important;
+            }
+            
+            /* Hide sidebar on mobile for better UX */
+            .css-1d391kg {
+                display: none !important;
+            }
         }
-        .sidebar-content {
-            font-size: 16px;
+        
+        /* Prevent horizontal scrolling */
+        .main .block-container {
+            max-width: 100% !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
         }
-        h1 {
-            font-size: 2.5rem;
-            color: #2c3e50;
+        
+        /* Better touch targets */
+        .stButton > button {
+            min-height: 44px !important;
+            touch-action: manipulation !important;
         }
-        h2 {
-            font-size: 2rem;
-            color: #34495e;
-        }
-        h3 {
-            font-size: 1.5rem;
-            color: #34495e;
-        }
+        
+        /* Admin link styling */
         .admin-link {
             background-color: #dc3545;
             color: white;
