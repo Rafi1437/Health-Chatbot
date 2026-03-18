@@ -38,152 +38,157 @@ except ImportError as e:
 def show_mental_health():
     """Display mental health monitoring page"""
     
-    st.markdown("""
-    <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .sentiment-positive {
-        background-color: #d4edda;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #28a745;
-    }
-    .sentiment-neutral {
-        background-color: #fff3cd;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #ffc107;
-    }
-    .sentiment-negative {
-        background-color: #f8d7da;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #dc3545;
-    }
-    .stButton > button {
-        background-color: #6f42c1;
-        color: white;
-        font-size: 16px;
-        padding: 10px 20px;
-        border-radius: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("# 🧠 Mental Health Check")
-    st.markdown("## How are you feeling today?")
-    
-    # Check if NLTK is available
-    if not NLTK_AVAILABLE:
-        if FALLBACK_AVAILABLE:
-            st.info("📊 Using fallback sentiment analysis (word-based) for cloud deployment")
+    try:
+        st.markdown("""
+        <style>
+        .main {
+            background-color: #f8f9fa;
+        }
+        .sentiment-positive {
+            background-color: #d4edda;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+        }
+        .sentiment-negative {
+            background-color: #f8d7da;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #dc3545;
+        }
+        .sentiment-neutral {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #ffc107;
+        }
+        .stButton > button {
+            background-color: #6f42c1;
+            color: white;
+            font-size: 16px;
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("# 🧠 Mental Health Check")
+        st.markdown("## How are you feeling today?")
+        
+        # Check if NLTK is available
+        if not NLTK_AVAILABLE:
+            if FALLBACK_AVAILABLE:
+                st.info("📊 Using fallback sentiment analysis (word-based) for cloud deployment")
+            else:
+                st.warning("⚠️ Sentiment analysis is currently unavailable. NLTK data could not be loaded.")
+                st.info("You can still track your feelings, but sentiment analysis will be disabled.")
+        
+        # Initialize sentiment analyzer with fallback
+        if NLTK_AVAILABLE:
+            analyzer = SentimentAnalyzer()
+            st.success("✅ Using advanced NLTK sentiment analysis")
+        elif FALLBACK_AVAILABLE:
+            analyzer = FallbackSentimentAnalyzer()
+            st.info("📊 Using fallback sentiment analysis")
         else:
-            st.warning("⚠️ Sentiment analysis is currently unavailable. NLTK data could not be loaded.")
-            st.info("You can still track your feelings, but sentiment analysis will be disabled.")
-    
-    # Initialize sentiment analyzer with fallback
-    if NLTK_AVAILABLE:
-        analyzer = SentimentAnalyzer()
-        st.success("✅ Using advanced NLTK sentiment analysis")
-    elif FALLBACK_AVAILABLE:
-        analyzer = FallbackSentimentAnalyzer()
-        st.info("📊 Using fallback sentiment analysis")
-    else:
-        analyzer = None
-        st.error("❌ Sentiment analysis unavailable")
-    
-    # Check-in form
-    with st.form("mental_health_form"):
-        feeling = st.text_area(
-            "Share your feelings...",
-            placeholder="Tell us how you're feeling today... You can talk about your mood, energy level, or anything on your mind.",
-            height=100
-        )
+            analyzer = None
+            st.error("❌ Sentiment analysis unavailable")
         
-        submitted = st.form_submit_button("🔍 Analyze My Mood", use_container_width=True)
-        
-        if submitted:
-            if not feeling.strip():
-                st.error("❌ Please share how you're feeling")
-                return
+        # Check-in form
+        with st.form("mental_health_form"):
+            feeling = st.text_area(
+                "Share your feelings...",
+                placeholder="Tell us how you're feeling today... You can talk about your mood, energy level, or anything on your mind.",
+                height=100
+            )
             
-            # Analyze sentiment only if analyzer is available
-            if analyzer:
-                try:
-                    result = analyzer.predict_sentiment(feeling)
-                    sentiment = result['sentiment']
-                    confidence = result['confidence']
-                    
-                    # Get emoji for sentiment
-                    if hasattr(analyzer, 'get_sentiment_emoji'):
-                        emoji = analyzer.get_sentiment_emoji(sentiment)
-                    else:
-                        # Fallback emoji mapping
-                        emoji_map = {'positive': '😊', 'negative': '😔', 'neutral': '😐'}
-                        emoji = emoji_map.get(sentiment, '😐')
-                    
-                    # Display result with method info
-                    sentiment_class = f"sentiment-{sentiment}"
-                    method_info = result.get('method', 'unknown')
-                    
-                    st.markdown(f"""
-                    <div class="{sentiment_class}">
-                        <h2>{emoji} Your Mood: {sentiment.title()}</h2>
-                        <p><strong>Confidence:</strong> {confidence:.1%}</p>
-                        <p><strong>Analysis Method:</strong> {method_info}</p>
-                        <p><strong>Your message:</strong> "{feeling}"</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Save to database
-                    save_mental_health_record(
-                        st.session_state.user_id,
-                        feeling,
-                        sentiment,
-                        confidence
-                    )
-                    
-                except Exception as e:
-                    st.error(f"❌ Error analyzing sentiment: {e}")
-                    st.info("Your feeling has been saved, but sentiment analysis was not available.")
-                    # Still save feeling without sentiment analysis
+            submitted = st.form_submit_button("🔍 Analyze My Mood", use_container_width=True)
+            
+            if submitted:
+                if not feeling.strip():
+                    st.error("❌ Please share how you're feeling")
+                    return
+                
+                # Analyze sentiment only if analyzer is available
+                if analyzer:
+                    try:
+                        result = analyzer.predict_sentiment(feeling)
+                        sentiment = result['sentiment']
+                        confidence = result['confidence']
+                        
+                        # Get emoji for sentiment
+                        if hasattr(analyzer, 'get_sentiment_emoji'):
+                            emoji = analyzer.get_sentiment_emoji(sentiment)
+                        else:
+                            # Fallback emoji mapping
+                            emoji_map = {'positive': '😊', 'negative': '😔', 'neutral': '😐'}
+                            emoji = emoji_map.get(sentiment, '😐')
+                        
+                        # Display result with method info
+                        sentiment_class = f"sentiment-{sentiment}"
+                        method_info = result.get('method', 'unknown')
+                        
+                        st.markdown(f"""
+                        <div class="{sentiment_class}">
+                            <h2>{emoji} Your Mood: {sentiment.title()}</h2>
+                            <p><strong>Confidence:</strong> {confidence:.1%}</p>
+                            <p><strong>Analysis Method:</strong> {method_info}</p>
+                            <p><strong>Your message:</strong> "{feeling}"</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Save to database
+                        save_mental_health_record(
+                            st.session_state.user_id,
+                            feeling,
+                            sentiment,
+                            confidence
+                        )
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error analyzing sentiment: {e}")
+                        st.info("Your feeling has been saved, but sentiment analysis was not available.")
+                        # Still save feeling without sentiment analysis
+                        save_mental_health_record(
+                            st.session_state.user_id,
+                            feeling,
+                            "neutral",  # Default sentiment
+                            0.5  # Default confidence
+                        )
+                else:
+                    # No analyzer available, just save feeling
+                    st.info("Your feeling has been saved. Sentiment analysis is currently unavailable.")
                     save_mental_health_record(
                         st.session_state.user_id,
                         feeling,
                         "neutral",  # Default sentiment
                         0.5  # Default confidence
                     )
-            else:
-                # No analyzer available, just save feeling
-                st.info("Your feeling has been saved. Sentiment analysis is currently unavailable.")
-                save_mental_health_record(
-                    st.session_state.user_id,
-                    feeling,
-                    "neutral",  # Default sentiment
-                    0.5  # Default confidence
-                )
-            
-            # Provide personalized feedback only if sentiment was analyzed
-            if 'sentiment' in locals() and sentiment:
-                if sentiment == "positive":
-                    st.success("🎉 That's wonderful to hear! Keep up the positive spirit!")
-                    st.info("💡 Consider sharing your joy with family or friends, or engaging in activities that make you happy.")
-                elif sentiment == "neutral":
-                    st.info("🤔 It's okay to have neutral days. Consider trying something new or engaging in light activities.")
-                    st.info("💡 A short walk, calling a friend, or listening to music might help brighten your day.")
+                
+                # Provide personalized feedback only if sentiment was analyzed
+                if 'sentiment' in locals() and sentiment:
+                    if sentiment == "positive":
+                        st.success("🎉 That's wonderful to hear! Keep up the positive spirit!")
+                        st.info("💡 Consider sharing your joy with family or friends, or engaging in activities that make you happy.")
+                    elif sentiment == "neutral":
+                        st.info("🤔 It's okay to have neutral days. Consider trying something new or engaging in light activities.")
+                        st.info("💡 A short walk, calling a friend, or listening to music might help brighten your day.")
+                    else:
+                        st.warning("🫂 I'm sorry you're feeling this way. Remember, it's okay to not be okay.")
+                        st.info("💡 Consider reaching out to a family member, friend, or healthcare provider. You're not alone.")
                 else:
-                    st.warning("🫂 I'm sorry you're feeling this way. Remember, it's okay to not be okay.")
-                    st.info("💡 Consider reaching out to a family member, friend, or healthcare provider. You're not alone.")
-            else:
-                st.info("📝 Your feeling has been recorded. Thank you for sharing!")
-            
-            st.balloons()
-    
-    st.markdown("---")
-    
-    # Show mental health history
-    show_mental_health_history()
+                    st.info("📝 Your feeling has been recorded. Thank you for sharing!")
+                
+                st.balloons()
+        
+        st.markdown("---")
+        
+        # Show mental health history
+        show_mental_health_history()
+        
+    except Exception as e:
+        st.error(f"❌ Error in mental health module: {e}")
+        st.info("Please try again. If the problem persists, contact support.")
 
 def save_mental_health_record(user_id, feeling, sentiment, confidence):
     """Save mental health record to database"""
@@ -207,9 +212,9 @@ def save_mental_health_record(user_id, feeling, sentiment, confidence):
 def show_mental_health_history():
     """Display mental health history with charts"""
     
-    st.markdown("### 📊 Your Mental Health Journey")
-    
     try:
+        st.markdown("### 📊 Your Mental Health Journey")
+        
         db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'healthcare.db')
         conn = sqlite3.connect(db_path)
         
@@ -324,6 +329,7 @@ def show_mental_health_history():
         # Select only columns that exist
         available_columns = ['timestamp', 'sentiment', 'feeling']
         if 'confidence' in df.columns:
+            available_columns = list(available_columns)  # Convert to list
             available_columns.append('confidence')
         
         recent_entries = df.head(5)[available_columns]
@@ -338,3 +344,4 @@ def show_mental_health_history():
         
     except Exception as e:
         st.error(f"Error loading mental health history: {e}")
+        st.info("Please try again. If the problem persists, contact support.")

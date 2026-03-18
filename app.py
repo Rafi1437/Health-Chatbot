@@ -140,7 +140,7 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS for senior-friendly and mobile-responsive UI
+    # Custom CSS for senior-friendly and mobile-responsive UI with button fixes
     st.markdown("""
     <style>
         /* Base styles */
@@ -148,14 +148,124 @@ def main():
             font-size: 18px;
         }
         
-        /* Button styles */
+        /* Enhanced button styles for single-click functionality */
         .stButton > button {
-            font-size: 18px;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: bold;
-            touch-action: manipulation;
-            min-height: 44px;
+            background-color: #6f42c1 !important;
+            color: white !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            border: 2px solid #6f42c1 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            touch-action: manipulation !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            min-height: 44px !important;
+            min-width: 120px !important;
+            width: 100% !important;
+            display: block !important;
+            position: relative !important;
+            z-index: 10 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            outline: none !important;
+            text-align: center !important;
+            line-height: 1.4 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        
+        /* Button hover effects */
+        .stButton > button:hover {
+            background-color: #5a3d8a !important;
+            border-color: #5a3d8a !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+        }
+        
+        /* Button active/pressed state */
+        .stButton > button:active {
+            background-color: #4c2f7d !important;
+            border-color: #4c2f7d !important;
+            transform: translateY(0px) !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        }
+        
+        /* Button focus state */
+        .stButton > button:focus {
+            outline: 2px solid #6f42c1 !important;
+            outline-offset: 2px !important;
+        }
+        
+        /* Mobile-specific button fixes */
+        @media (max-width: 768px) {
+            .stButton > button {
+                font-size: 18px !important;
+                padding: 14px 28px !important;
+                min-height: 48px !important;
+                min-width: 140px !important;
+                margin: 8px 0 !important;
+            }
+        }
+        
+        /* Form button container fixes */
+        .stForm {
+            margin-bottom: 20px !important;
+        }
+        
+        .stForm > div {
+            background-color: transparent !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+        
+        /* Button container spacing */
+        div[data-testid="stForm"] {
+            margin: 10px 0 !important;
+        }
+        
+        /* Streamlit button element fixes */
+        button[kind="primary"] {
+            background-color: #6f42c1 !important;
+            color: white !important;
+            border: 2px solid #6f42c1 !important;
+            padding: 12px 24px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            touch-action: manipulation !important;
+            min-height: 44px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        button[kind="primary"]:hover {
+            background-color: #5a3d8a !important;
+            border-color: #5a3d8a !important;
+        }
+        
+        button[kind="primary"]:active {
+            background-color: #4c2f7d !important;
+            border-color: #4c2f7d !important;
+        }
+        
+        /* Prevent double-click issues */
+        .stButton > button {
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+        
+        /* Loading state fixes */
+        .stButton > button:disabled {
+            opacity: 0.6 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
         }
         
         /* Input styles */
@@ -220,6 +330,39 @@ def main():
             color: white;
         }
     </style>
+    
+    <script>
+    // Prevent double-click and ensure single-click functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click prevention to all buttons
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+            let isProcessing = false;
+            
+            button.addEventListener('click', function(e) {
+                if (isProcessing) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                isProcessing = true;
+                
+                // Reset processing state after a short delay
+                setTimeout(() => {
+                    isProcessing = false;
+                }, 500);
+            });
+            
+            // Prevent double-tap on mobile
+            button.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                const clickEvent = new Event('click');
+                button.dispatchEvent(clickEvent);
+            });
+        });
+    });
+    </script>
     """, unsafe_allow_html=True)
     
     # Initialize session state
