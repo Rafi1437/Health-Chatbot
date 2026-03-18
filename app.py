@@ -24,72 +24,110 @@ from admin.admin_login import show_admin_login
 from admin.admin_dashboard import show_admin_dashboard
 
 def download_nltk_data():
-    """Download required NLTK data for cloud deployment with robust error handling"""
+    """Ultimate NLTK setup for Streamlit Cloud deployment"""
     try:
         import nltk
         import os
         
-        # Create multiple possible NLTK data paths for cloud deployment
-        possible_paths = [
-            '/home/adminuser/nltk_data',  # Streamlit Cloud
+        # Step 1: Set NLTK data path to multiple locations
+        nltk_data_paths = [
+            '/home/adminuser/nltk_data',  # Streamlit Cloud primary
+            '/home/adminuser/.nltk_data',  # Alternative Streamlit path
             os.path.expanduser('~/nltk_data'),  # Home directory
             '/tmp/nltk_data',  # Temporary directory
             './nltk_data',  # Local directory
-            os.path.join(os.getcwd(), 'nltk_data')  # Current working directory
+            os.path.join(os.getcwd(), 'nltk_data'),  # Current working
+            '/mount/data/nltk_data',  # Mount point
+            '/app/nltk_data',  # App directory
         ]
         
-        # Add all possible paths to NLTK data path
-        for path in possible_paths:
+        # Add all paths to NLTK
+        for path in nltk_data_paths:
             if path not in nltk.data.path:
                 nltk.data.path.append(path)
         
-        # Find the best available path
-        best_path = None
-        for path in possible_paths:
+        # Step 2: Create directories and test write permissions
+        working_path = None
+        for path in nltk_data_paths:
             try:
                 os.makedirs(path, exist_ok=True)
-                # Test if we can write to this path
-                test_file = os.path.join(path, 'test_write.txt')
+                # Test write permissions
+                test_file = os.path.join(path, 'nltk_test.txt')
                 with open(test_file, 'w') as f:
                     f.write('test')
                 os.remove(test_file)
-                best_path = path
+                working_path = path
+                print(f"✅ NLTK data path: {path}")
                 break
             except Exception:
                 continue
         
-        if best_path:
-            print(f"📁 Using NLTK data path: {best_path}")
-            
-            # Download required NLTK data to the best path
-            required_packages = [
-                ('tokenizers/punkt', 'punkt'),
-                ('corpora/stopwords', 'stopwords'),
-                ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger')
-            ]
-            
-            for resource, package in required_packages:
+        if not working_path:
+            print("❌ Could not find writable NLTK data directory")
+            return False
+        
+        # Step 3: Download NLTK data with absolute paths
+        nltk_packages = [
+            ('tokenizers/punkt', 'punkt'),
+            ('corpora/stopwords', 'stopwords'),
+            ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger'),
+            ('corpora/wordnet', 'wordnet'),
+            ('tokenizers/punkt_tab', 'punkt_tab')
+        ]
+        
+        success_count = 0
+        for resource, package in nltk_packages:
+            try:
+                # Check if already exists
+                nltk.data.find(resource)
+                print(f"✅ {package} already available")
+                success_count += 1
+            except LookupError:
+                # Download with absolute path
                 try:
-                    nltk.data.find(resource)
-                    print(f"✅ {package} already available")
-                except LookupError:
                     print(f"📦 Downloading {package}...")
+                    nltk.download(package, download_dir=working_path, quiet=False)
+                    # Verify download
+                    nltk.data.find(resource)
+                    print(f"✅ {package} downloaded successfully")
+                    success_count += 1
+                except Exception as download_error:
+                    print(f"❌ Failed to download {package}: {download_error}")
+                    # Try alternative download method
                     try:
-                        nltk.download(package, download_dir=best_path, quiet=True)
-                        print(f"✅ {package} downloaded successfully")
-                    except Exception as download_error:
-                        print(f"⚠️  Error downloading {package}: {download_error}")
-                        # Continue with other downloads rather than failing
-                        continue
+                        print(f"🔄 Trying alternative download for {package}...")
+                        nltk.download(package, quiet=True)
+                        print(f"✅ {package} downloaded (alternative method)")
+                        success_count += 1
+                    except Exception as alt_error:
+                        print(f"❌ Alternative download also failed: {alt_error}")
+        
+        # Step 4: Verify NLTK functionality
+        try:
+            from nltk.tokenize import word_tokenize
+            from nltk.corpus import stopwords
             
-            return best_path
-        else:
-            print("❌ Could not find a writable directory for NLTK data")
-            return None
+            # Test tokenization
+            test_text = "Hello world, this is a test for NLTK functionality."
+            tokens = word_tokenize(test_text)
+            
+            # Test stopwords
+            stop_words = set(stopwords.words('english'))
+            
+            if len(tokens) > 0 and len(stop_words) > 0:
+                print("✅ NLTK functionality verified")
+                return True
+            else:
+                print("❌ NLTK functionality test failed")
+                return False
+                
+        except Exception as func_error:
+            print(f"❌ NLTK functionality test error: {func_error}")
+            return False
             
     except Exception as e:
-        print(f"NLTK setup issue: {e}")
-        return None
+        print(f"❌ Ultimate NLTK setup failed: {e}")
+        return False
 
 def main():
     """Main application function"""
